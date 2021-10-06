@@ -10,6 +10,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -34,6 +35,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     ActivityResultLauncher<String> permissionLauncher;
     LocationManager locationManager;
     LocationListener locationListener;
+    SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +48,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
+        sharedPreferences=MapsActivity.this.getSharedPreferences("com.example.javamaps",MODE_PRIVATE);
         registerLauncher();
     }
 
@@ -75,7 +77,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         locationListener=new LocationListener() {
             @Override
             public void onLocationChanged(@NonNull Location location) {
-                System.out.println("location:"+location.toString());
+                //System.out.println("location:"+location.toString());
+
+                boolean info = sharedPreferences.getBoolean("info",false);
+                if (!info){
+                    LatLng userLocation=new LatLng(location.getLatitude(),location.getLongitude());
+                    mMap.moveCamera((CameraUpdateFactory.newLatLngZoom(userLocation,15)));
+                    sharedPreferences.edit().putBoolean("info",true).apply();
+                }
+
+
+
             }
 
             @Override
@@ -105,15 +117,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }else{
             //İzin verilmişse direk konum güncellemlerini başlayabiliriz.
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0,locationListener);
+            Location lastLaocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if(lastLaocation != null){
+                LatLng lastUserLocation = new LatLng(lastLaocation.getLatitude(),lastLaocation.getLongitude());
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastUserLocation,15));
+            }
+            //Mavi imlecin yeri belli olması için
+            mMap.setMyLocationEnabled(true);
         }
 
 
         //48.8582007,2.2937732
-        LatLng eiffel=new LatLng(48.8582007,2.2937732);
-        mMap.addMarker(new MarkerOptions().position(eiffel).title("Eiffel Tower"));
+        // LatLng eiffel=new LatLng(48.8582007,2.2937732);
+        // mMap.addMarker(new MarkerOptions().position(eiffel).title("Eiffel Tower"));
         //mMap.moveCamera(CameraUpdateFactory.newLatLng(eiffel));
         //newLatLngZoom -> yakın olarak başlaması için bunu kullanabiliriz.
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(eiffel,10));
+        // mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(eiffel,10));
 
     }
     private void registerLauncher(){
@@ -124,6 +143,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     //permission granted
                     if(ContextCompat.checkSelfPermission(MapsActivity.this,Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED){
                         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,0,0,locationListener);
+                        Location lastLaocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        if(lastLaocation != null){
+                            LatLng lastUserLocation = new LatLng(lastLaocation.getLatitude(),lastLaocation.getLongitude());
+                            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastUserLocation,15));
+                        }
                     }
                 }else{
                     //permission denied
